@@ -3,6 +3,7 @@ package it.polito.tdp.formulaone.model;
 import java.util.*;
 
 import org.jgrapht.Graphs;
+import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.SimpleDirectedWeightedGraph;
 import it.polito.tdp.formulaone.db.FormulaOneDAO;
@@ -21,6 +22,10 @@ public class Model {
 	//definisco le variabili di stato della ricorsione
 	private int tassoMin;
 	private List<Driver> teamMin;
+	
+	//PER OTTIMIZZAZIONE
+	private Set<Driver> ottima;
+	private int idMaggiore;
 	
 	public List<Season> getSeasons(){
 		if(seasons == null){
@@ -60,6 +65,7 @@ public class Model {
     		}
     	}
     	System.out.println(graph.toString());
+    	
 	}
 	
 	public Driver getBestDriver(){
@@ -67,6 +73,7 @@ public class Model {
 		int max =Integer.MIN_VALUE;
 		
 		for(Driver d: graph.vertexSet()){
+			
 			int peso=0;
 			//peso uguale alla gare vinte - gare perse
 			
@@ -144,6 +151,7 @@ public class Model {
 				//modifica 1: usare la lista e non il set xk devo avere il precedente e il successivo
 				//modifica 2: avrò un secondo tipo di caso terminale in cui non riesco a comporre il team
 				//				quindi la ricorsione termina PRIMA CHE IL PASSO = K
+				
 				//riduco il numero di chiamate ricorsive di k!(k fattoriale)
 				
 				ricorsiva(passo+1, team, k);
@@ -170,4 +178,74 @@ public class Model {
 		return tasso;
 	}
 	
+	/*
+	 * MODI PER OTTIMIZZARE: riduco di n!
+-CONTROLLI EFFICACI NEL BLOCCO: CONDIZIONE DI TERMINAZIONE PER EVITARE DI ANALIZZARE SOLUZIONI PARZIALI NON VALIDE.
+-CONTOLLO DENTRO IL CICLO FOR/WHILE EFFICACE:
+SE NON NECESSARIE è MOLTO UTILE ELIMINARE LE PERMUTAZIONI :
+CONSIDERO SOLO A,B,C NON ANCHE B,C,A /  A,C,B /……..
+
+	1) CREARE IL METODO COMPARE TO NELLA CLASSE CHE COMPONE LA SOLUZIONE PARZIALE(implements Comparable<Driver>)
+	
+public int compareTo(Driver arg0) {
+		return this.driverId-arg0.getDriverId();
+}
+	*/
+	//2) POI NEL METODO RICORSIVO(che riceve ultimoAggiunto dall’iterata precedente come parametro)
+	
+	public Set<Driver> InterfacciaRicorsione (int k){
+		HashSet<Driver>  parziale= new HashSet<Driver>();
+		
+		ottima=new HashSet<Driver>(); //definita a livello globale
+		
+		int livello=0;
+		this.cercaIdMaggiore(); // variabile globale per avere l'id maggiore
+		this. Ricorsivo(parziale, livello, k, null );
+		
+		return ottima;
+	}
+	
+	private void Ricorsivo(HashSet<Driver> parziale, int livello, int k, Driver ultimoAggiunto) {
+		//blocco di salvataggio
+		if(livello==k){
+			if(tassoSconfitta(parziale)<tassoSconfitta(ottima)){
+				ottima.clear();
+				ottima.addAll(parziale);
+				System.out.println(ottima.toString());
+			}
+			return;
+		}
+		
+		if(parziale.size()>0 && ultimoAggiunto.getDriverId()==idMaggiore)
+			return;
+//aggiungo questa seconda condizione di terminazione per evitare quando in ultima posizione 
+//ho il pilota con id maggiore di cercare di aggiungere ugualmente piloti , 
+//in quanto so che a causa del controllo if nel for non ci riuscirò, il ramo dell'albero ricorsivo 
+//dove ho il pilota con id maggiore (lo posso avere solo in ultima posizione) con questo 
+	//return risale velocemente i livelli e si termina.
+
+		for(Driver d:graph.vertexSet()){
+			if(parziale.size()==0 || ultimoAggiunto.compareTo(d)<0){
+				
+//il prossimo pilota che aggiungo: d deve avere un id maggiore dell'id del pilota aggiunto precedententemente
+//:ultimoAggiunto . infatti ultimoAggiunto.compareTo(d) è <0 se id di ultimoAggiunto viene prima (è minore) di id di d 
+
+				parziale.add(d);//metto
+					Ricorsivo(parziale,livello+1,k,d);//provo
+				parziale.remove(d);//tolgo
+			}
+		}
+	}
+	
+	
+private void cercaIdMaggiore(){
+		int max=Integer.MIN_VALUE;
+		
+		for(Driver d :graph.vertexSet()){
+			if(d.getDriverId()>max)
+				max=d.getDriverId();
+	}
+		idMaggiore=max;//globale
+}
+	 
 }
